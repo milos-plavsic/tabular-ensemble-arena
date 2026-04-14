@@ -23,6 +23,12 @@ make api          # http://127.0.0.1:8000/docs
 
 Docker: `make docker-api` (Compose profile `api`).
 
+## API
+
+- OpenAPI: `http://127.0.0.1:8000/docs`
+- `GET /health`
+- `POST /v1/compare` with JSON body `{"n_samples": 2000, "n_features": 20, "cv_splits": 3}` (bounds enforced in schema)
+
 ## Architecture
 
 ```mermaid
