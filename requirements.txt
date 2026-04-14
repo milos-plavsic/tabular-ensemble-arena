@@ -6,3 +6,4 @@ catboost
 fastapi
 uvicorn[standard]
 pytest
+httpx

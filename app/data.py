@@ -1,19 +1,25 @@
+from __future__ import annotations
+
+from pathlib import Path
+
 import numpy as np
-from sklearn.datasets import make_classification
+import pandas as pd
+
+DATA_SOURCE = (
+    "UCI — Student Performance (Math), secondary schools Portugal. "
+    "https://archive.ics.uci.edu/dataset/320/student+performance"
+)
 
 
-def load_synthetic(
-    n_samples: int = 2000,
-    n_features: int = 20,
-    n_informative: int = 12,
-    n_redundant: int = 4,
-    random_state: int = 42,
-) -> tuple[np.ndarray, np.ndarray]:
-    X, y = make_classification(
-        n_samples=n_samples,
-        n_features=n_features,
-        n_informative=n_informative,
-        n_redundant=n_redundant,
-        random_state=random_state,
-    )
-    return X.astype(np.float32), y.astype(np.int64)
+def project_root() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def load_student_pass_fail_encoded() -> tuple[np.ndarray, np.ndarray]:
+    """Binary pass if final math grade G3 >= 10; exclude prior grades for a harder task."""
+    path = project_root() / "data" / "student-mat.csv"
+    df = pd.read_csv(path, sep=";")
+    y = (df["G3"] >= 10).astype(int).to_numpy()
+    X = df.drop(columns=["G3", "G1", "G2"])
+    X = pd.get_dummies(X, drop_first=True)
+    return X.to_numpy(dtype=np.float32), y
