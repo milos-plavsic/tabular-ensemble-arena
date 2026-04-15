@@ -26,12 +26,13 @@ def _ensure_student_mat_csv(path: Path) -> None:
         raise RuntimeError("Could not obtain student-mat.csv from UCI") from e
 
 
-def load_student_pass_fail_encoded() -> tuple[np.ndarray, np.ndarray]:
-    """Binary pass if final math grade G3 >= 10; exclude prior grades for a harder task."""
+def load_student_pass_fail_encoded(*, include_prior_grades: bool = False) -> tuple[np.ndarray, np.ndarray]:
+    """Binary pass if final grade G3 >= 10; optionally include G1/G2 as additional information."""
     path = project_root() / "data" / "student-mat.csv"
     _ensure_student_mat_csv(path)
     df = pd.read_csv(path, sep=";")
     y = (df["G3"] >= 10).astype(int).to_numpy()
-    X = df.drop(columns=["G3", "G1", "G2"])
+    drop_cols = ["G3"] if include_prior_grades else ["G3", "G1", "G2"]
+    X = df.drop(columns=drop_cols)
     X = pd.get_dummies(X, drop_first=True)
     return X.to_numpy(dtype=np.float32), y
