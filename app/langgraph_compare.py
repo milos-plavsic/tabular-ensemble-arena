@@ -2,10 +2,16 @@ from __future__ import annotations
 
 from typing import Literal, TypedDict
 
-import numpy as np
 from langgraph.graph import END, StateGraph
 
 from app.data import DATA_SOURCE, load_student_pass_fail_encoded
+from app.orchestration_policy import (
+    confidence_label,
+    decide_loop,
+    normalized_stability,
+    normalize_threshold,
+    weighted_confidence,
+)
 from app.train import leaderboard, run_comparison
 
 
@@ -38,22 +44,10 @@ class CompareState(TypedDict, total=False):
     history: list[IterSummary]
 
 
-def _clip01(x: float) -> float:
-    return float(max(0.0, min(1.0, x)))
-
-
-def _label(score: float) -> str:
-    if score >= 0.8:
-        return "high"
-    if score >= 0.6:
-        return "medium"
-    return "low"
-
-
 def _validate(state: CompareState) -> CompareState:
     return {
         "cv_splits": max(2, min(10, int(state.get("cv_splits", 3)))),
-        "confidence_threshold": _clip01(float(state.get("confidence_threshold", 0.69))),
+        "confidence_threshold": normalize_threshold(state.get("confidence_threshold", 0.69)),
         "max_iterations": max(1, int(state.get("max_iterations", 3))),
         "random_state": int(state.get("random_state", 42)),
         "iteration": 0,
@@ -85,19 +79,20 @@ def _compare(state: CompareState) -> CompareState:
 def _assess(state: CompareState) -> CompareState:
     best_model, best_auc, best_std = state["leaderboard_rows"][0]
     margin = best_auc - state["leaderboard_rows"][1][1]
-    confidence = _clip01(0.65 * best_auc + 0.20 * _clip01(margin * 5.0) + 0.15 * (1.0 - min(best_std, 1.0)))
-    conf_label = _label(confidence)
+    components = {
+        "primary_quality": best_auc,
+        "secondary_quality": min(max(margin * 5.0, 0.0), 1.0),
+        "stability": normalized_stability(best_std),
+    }
+    confidence = weighted_confidence(components)
+    conf_label = confidence_label(confidence)
 
-    reached_conf = confidence >= state["confidence_threshold"]
-    reached_limit = state["iteration"] >= state["max_iterations"]
-    continue_loop = not reached_conf and not reached_limit
-
-    if reached_conf:
-        reason = "confidence_threshold_reached"
-    elif reached_limit:
-        reason = "max_iterations_reached"
-    else:
-        reason = "retry_with_additional_information"
+    loop = decide_loop(
+        confidence_score=confidence,
+        confidence_threshold=state["confidence_threshold"],
+        iteration=state["iteration"],
+        max_iterations=state["max_iterations"],
+    )
 
     h: IterSummary = {
         "iteration": state["iteration"],
@@ -112,8 +107,8 @@ def _assess(state: CompareState) -> CompareState:
     return {
         "confidence_score": confidence,
         "confidence_label": conf_label,
-        "continue_loop": continue_loop,
-        "stop_reason": reason,
+        "continue_loop": loop["continue_loop"],
+        "stop_reason": loop["stop_reason"],
         "history": [*state["history"], h],
     }
 
@@ -161,10 +156,7 @@ def run_agentic_compare(
             "random_state": random_state,
         }
     )
-    board = [
-        {"model": n, "roc_auc_mean": m, "roc_auc_std": s}
-        for n, m, s in out["leaderboard_rows"]
-    ]
+    board = [{"model": n, "roc_auc_mean": m, "roc_auc_std": s} for n, m, s in out["leaderboard_rows"]]
     return {
         "leaderboard": board,
         "raw": out["results"],
