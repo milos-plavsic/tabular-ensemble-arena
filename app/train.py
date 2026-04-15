@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import numpy as np
 from catboost import CatBoostClassifier
+from sklearn.base import clone
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import StratifiedKFold
 from xgboost import XGBClassifier
 
 
@@ -24,6 +26,7 @@ def build_models(random_state: int = 42) -> dict[str, object]:
         colsample_bytree=0.85,
         reg_lambda=1.0,
         random_state=random_state,
+        objective="binary:logistic",
         eval_metric="logloss",
         verbosity=0,
     )
@@ -49,18 +52,22 @@ def run_comparison(
     models = build_models(random_state)
     results: dict[str, dict] = {}
     for name, clf in models.items():
-        scores = cross_val_score(
-            clf,
-            X,
-            y,
-            cv=cv,
-            scoring="roc_auc",
-            n_jobs=1,
-        )
+        fold_scores: list[float] = []
+        for train_idx, val_idx in cv.split(X, y):
+            X_train, X_val = X[train_idx], X[val_idx]
+            y_train, y_val = y[train_idx], y[val_idx]
+            if len(np.unique(y_val)) < 2:
+                fold_scores.append(float("nan"))
+                continue
+            est = clone(clf)
+            est.fit(X_train, y_train)
+            proba = est.predict_proba(X_val)[:, 1]
+            fold_scores.append(float(roc_auc_score(y_val, proba)))
+        arr = np.asarray(fold_scores, dtype=float)
         results[name] = {
-            "roc_auc_mean": float(np.mean(scores)),
-            "roc_auc_std": float(np.std(scores)),
-            "folds": [float(s) for s in scores],
+            "roc_auc_mean": float(np.nanmean(arr)),
+            "roc_auc_std": float(np.nanstd(arr)),
+            "folds": [float(s) for s in fold_scores],
         }
     return results
 
