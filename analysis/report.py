@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.data import DATA_SOURCE, load_student_pass_fail_encoded
-from app.train import run_comparison
 from analysis.json_util import dumps_pretty
 from analysis.plotting import bar_with_errors, fold_line_plot
 from analysis.stats_utils import comparison_table
+from app.data import DATA_SOURCE, load_student_pass_fail_encoded
+from app.train import run_comparison
 
 
 def generate_report(out_dir: Path | None = None, cv_splits: int = 3) -> dict:
+    """Execute the generate report routine."""
     out = Path(out_dir or "reports")
     fig_dir = out / "figures"
     out.mkdir(parents=True, exist_ok=True)
@@ -55,6 +56,7 @@ def generate_report(out_dir: Path | None = None, cv_splits: int = 3) -> dict:
 
 
 def _markdown_summary(summary: dict, fig_dir: Path) -> str:
+    """Internal helper that handles markdown summary."""
     lines = [
         "# Ensemble benchmark — statistical summary",
         "",
@@ -67,15 +69,13 @@ def _markdown_summary(summary: dict, fig_dir: Path) -> str:
         "|---|---:|---:|",
     ]
     for m in summary["models"]:
-        lines.append(
-            f"| {m['model']} | {m['roc_auc_mean']:.4f} | {m['roc_auc_std']:.4f} |"
-        )
+        lines.append(f"| {m['model']} | {m['roc_auc_mean']:.4f} | {m['roc_auc_std']:.4f} |")
     lines.extend(
         [
             "",
             "## Figures",
             "",
-            f"- ![ROC-AUC bar](figures/roc_auc_model_comparison.png)",
+            "- ![ROC-AUC bar](figures/roc_auc_model_comparison.png)",
             "",
             "Per-fold line plots: see `figures/folds_*.png`.",
         ]
@@ -84,6 +84,7 @@ def _markdown_summary(summary: dict, fig_dir: Path) -> str:
 
 
 def main() -> None:
+    """Execute the main routine."""
     out = generate_report()
     print(dumps_pretty(out))
 

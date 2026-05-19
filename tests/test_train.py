@@ -1,10 +1,9 @@
-import numpy as np
-
 from app.data import load_student_pass_fail_encoded
 from app.train import leaderboard, run_comparison
 
 
 def test_run_comparison_three_models() -> None:
+    """Execute the test run comparison three models routine."""
     X, y = load_student_pass_fail_encoded()
     out = run_comparison(X, y, cv_splits=3, random_state=0)
     assert set(out.keys()) == {"random_forest", "xgboost", "catboost"}
@@ -15,6 +14,7 @@ def test_run_comparison_three_models() -> None:
 
 
 def test_leaderboard_sorted() -> None:
+    """Execute the test leaderboard sorted routine."""
     X, y = load_student_pass_fail_encoded()
     out = run_comparison(X, y, cv_splits=3, random_state=1)
     board = leaderboard(out)

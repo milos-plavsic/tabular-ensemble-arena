@@ -1,6 +1,5 @@
 from app.langgraph_compare import run_agentic_compare
 
-
 REQUIRED = {
     "confidence_score",
     "confidence_label",
@@ -12,7 +11,10 @@ REQUIRED = {
 
 
 def test_orchestration_contract_fields_present() -> None:
-    out = run_agentic_compare(cv_splits=3, confidence_threshold=0.7, max_iterations=2, random_state=0)
+    """Execute the test orchestration contract fields present routine."""
+    out = run_agentic_compare(
+        cv_splits=3, confidence_threshold=0.7, max_iterations=2, random_state=0
+    )
     assert REQUIRED.issubset(set(out.keys()))
     assert 0.0 <= out["confidence_score"] <= 1.0
     assert out["confidence_label"] in {"low", "medium", "high"}

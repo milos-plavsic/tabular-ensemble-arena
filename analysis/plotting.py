@@ -18,6 +18,7 @@ def bar_with_errors(
     title: str,
     ylabel: str,
 ) -> None:
+    """Execute the bar with errors routine."""
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     x = np.arange(len(labels))
@@ -41,6 +42,7 @@ def fold_line_plot(
     *,
     metric_name: str,
 ) -> None:
+    """Execute the fold line plot routine."""
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fig, ax = plt.subplots(figsize=(6, 3.5))

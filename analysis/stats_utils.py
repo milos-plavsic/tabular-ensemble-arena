@@ -5,6 +5,7 @@ from typing import Any
 
 
 def fold_statistics(folds: list[float]) -> dict[str, float]:
+    """Execute the fold statistics routine."""
     xs = [float(x) for x in folds]
     m = sum(xs) / len(xs)
     v = sum((x - m) ** 2 for x in xs) / max(len(xs) - 1, 1)
@@ -18,6 +19,7 @@ def fold_statistics(folds: list[float]) -> dict[str, float]:
 
 
 def comparison_table(results: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    """Execute the comparison table routine."""
     rows = []
     for name, m in results.items():
         fs = m.get("folds", [])

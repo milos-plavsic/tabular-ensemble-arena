@@ -8,14 +8,16 @@ from app.data import DATA_SOURCE, load_student_pass_fail_encoded
 from app.orchestration_policy import (
     confidence_label,
     decide_loop,
-    normalized_stability,
     normalize_threshold,
+    normalized_stability,
     weighted_confidence,
 )
 from app.train import leaderboard, run_comparison
 
 
 class IterSummary(TypedDict):
+    """Implementation of the iter summary."""
+
     iteration: int
     include_prior_grades: bool
     cv_splits: int
@@ -26,6 +28,8 @@ class IterSummary(TypedDict):
 
 
 class CompareState(TypedDict, total=False):
+    """Implementation of the compare state."""
+
     cv_splits: int
     confidence_threshold: float
     max_iterations: int
@@ -45,6 +49,7 @@ class CompareState(TypedDict, total=False):
 
 
 def _validate(state: CompareState) -> CompareState:
+    """Internal helper that handles validate."""
     return {
         "cv_splits": max(2, min(10, int(state.get("cv_splits", 3)))),
         "confidence_threshold": normalize_threshold(state.get("confidence_threshold", 0.69)),
@@ -56,6 +61,7 @@ def _validate(state: CompareState) -> CompareState:
 
 
 def _plan(state: CompareState) -> CompareState:
+    """Internal helper that handles plan."""
     it = int(state["iteration"]) + 1
     return {
         "iteration": it,
@@ -65,6 +71,7 @@ def _plan(state: CompareState) -> CompareState:
 
 
 def _compare(state: CompareState) -> CompareState:
+    """Internal helper that handles compare."""
     X, y = load_student_pass_fail_encoded(include_prior_grades=state["include_prior_grades"])
     results = run_comparison(
         X,
@@ -77,6 +84,7 @@ def _compare(state: CompareState) -> CompareState:
 
 
 def _assess(state: CompareState) -> CompareState:
+    """Internal helper that handles assess."""
     best_model, best_auc, best_std = state["leaderboard_rows"][0]
     margin = best_auc - state["leaderboard_rows"][1][1]
     components = {
@@ -114,14 +122,17 @@ def _assess(state: CompareState) -> CompareState:
 
 
 def _route(state: CompareState) -> Literal["plan", "finalize"]:
+    """Internal helper that handles route."""
     return "plan" if state["continue_loop"] else "finalize"
 
 
 def _finalize(state: CompareState) -> CompareState:
+    """Internal helper that handles finalize."""
     return {}
 
 
 def build_compare_graph():
+    """Execute the build compare graph routine."""
     g = StateGraph(CompareState)
     g.add_node("validate", _validate)
     g.add_node("plan", _plan)
@@ -148,6 +159,7 @@ def run_agentic_compare(
     max_iterations: int = 3,
     random_state: int = 42,
 ) -> dict:
+    """Execute the run agentic compare routine."""
     out = _COMPARE_GRAPH.invoke(
         {
             "cv_splits": cv_splits,
@@ -156,7 +168,9 @@ def run_agentic_compare(
             "random_state": random_state,
         }
     )
-    board = [{"model": n, "roc_auc_mean": m, "roc_auc_std": s} for n, m, s in out["leaderboard_rows"]]
+    board = [
+        {"model": n, "roc_auc_mean": m, "roc_auc_std": s} for n, m, s in out["leaderboard_rows"]
+    ]
     return {
         "leaderboard": board,
         "raw": out["results"],

@@ -4,6 +4,7 @@ from analysis.report import generate_report
 
 
 def test_generate_report_smoke(tmp_path: Path) -> None:
+    """Execute the test generate report smoke routine."""
     out = generate_report(tmp_path, cv_splits=3)
     assert out["n_models"] == 3
     assert (tmp_path / "summary.json").is_file()
